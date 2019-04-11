@@ -94,7 +94,7 @@ def G24HM2():
 
     # Create a parallel collection
     docs = sc.textFile(data_path,
-                       minPartitions=K  # TODO as said, we should not use this.
+                       minPartitions=K
                        ).cache()
 
     # Random K partitions.
@@ -112,23 +112,16 @@ def G24HM2():
     print("Elapsed time for Word Count 2 random: ", time.time() - begin_wordcount2_random, "second(s).")
 
     begin_wordcount2_partitioned = time.time()
-    word_count2_partitioned(sc, docs, K).collect()
+    word_count = word_count2_partitioned(sc, docs, K)
+    word_count.collect()
     print("Elapsed time for Word Count 2 partitioned: ", time.time() - begin_wordcount2_partitioned, "second(s).")
 
+    average_word_len = word_count.keys().map(lambda x: (x, len(x))).values().mean()
+    print("Average word length: ", average_word_len)
 
-    print(word_count2_partitioned(sc, docs, K).keys().map(lambda x: (x, len(x))).values().mean())
+    # Keep open the web interface provided
+    input("Press [RETURN] to end the program.")
+
 
 if __name__ == "__main__":
     G24HM2()
-
-# try:
-#     import cProfile as profile
-# except ImportError:
-#     import profile
-
-# profile.run("word_count1(sc, docs)", "G24HM2_word_count1_stats")
-# profile.run("word_count2_random(sc, docs)", "G24HM2_word_count2_random_stats")
-# profile.run("word_count2_partitioned(sc, docs)", "G24HM2_word_count2_partitioned_stats")
-
-# Keep open the web interface provided
-input("Press [RETURN] to end the program.")
