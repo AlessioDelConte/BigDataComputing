@@ -1,33 +1,7 @@
 from pyspark import SparkContext, SparkConf
 import sys
 import os
-
-# 1. Data loading
-# Import the Dataset
-docs_txt = []
-
-assert len(sys.argv) == 3, "Usage: python G24HM2.py <K> <file_name>"
-
-K = sys.argv[1]
-data_path = sys.argv[2]
-
-assert K.isdigit(), "K must be an integer"
-assert os.path.isfile(data_path) or os.path.isdir(data_path), "File or folder not found"
-
-# Spark Setup
-conf = SparkConf().setAppName('Word count 1&2').setMaster("local")
-sc = SparkContext(conf)
-
-# Create a parallel collection
-docs = sc.textFile(data_path,
-                   # minPartitions=K  # TODO as said, we should not use this.
-                   ).cache()
-
-# Random K partitions.
-docs.repartition(numPartitions=K)
-
-# Force data loading
-print("Data found: ", docs.count(), " row(s).")
+import time
 
 
 # 2. MapReduce Word count
@@ -52,24 +26,68 @@ def word_count1(sc, docs):
     # flatMap(f1) is the map phase
     # groupByKey().map(f2) is the reduce phase
     word_count_pairs = docs.flatMap(f1).groupByKey().map(f2)
-    counts = word_count_pairs.reduceByKey().collect()  # TODO like this?
+    counts = word_count_pairs.reduceByKey(lambda x, y: x + y).collect()  # TODO like this?
     # data must be small enough to fit in driver's memory
     return counts
+
 
 def word_count2_random(sc, docs):
     pass
 
+
 def word_count2_partitioned(sc, docs):
     pass
 
-try:
-    import cProfile as profile
-except ImportError:
-    import profile
 
-profile.run("word_count1(sc, docs)", "G24HM2_word_count1_stats")
-profile.run("word_count2_random(sc, docs)", "G24HM2_word_count2_random_stats")
-profile.run("word_count2_partitioned(sc, docs)", "G24HM2_word_count2_partitioned_stats")
+def G24HM2():
+
+    # 1. Data loading
+    # Import the Dataset
+    docs_txt = []
+
+    print(sys.argv)
+    assert len(sys.argv) == 3, "Usage: python G24HM2.py <K> <file_name>"
+
+    K = sys.argv[1]
+    data_path = sys.argv[2]
+
+    assert K.isdigit(), "K must be an integer"
+    assert os.path.isfile(data_path) or os.path.isdir(data_path), "File or folder not found"
+
+    K = int(K)
+
+    # Spark Setup
+    conf = SparkConf().setAppName('Word count 1-2').setMaster("local")
+    sc = SparkContext(conf=conf)
+
+    # Create a parallel collection
+    docs = sc.textFile(data_path,
+                       # minPartitions=K  # TODO as said, we should not use this.
+                       ).cache()
+
+    # Random K partitions.
+    docs.repartition(numPartitions=K)
+
+    # Force data loading
+    print("Data found: ", docs.count(), " row(s).")
+
+    begin_wordcount1 = time.time()
+    word_count1(sc, docs)
+    print("Elapsed time for Word Count 1: ", time.time() - begin_wordcount1, "second(s).")
+
+
+if __name__ == "__main__":
+    G24HM2()
+
+
+# try:
+#     import cProfile as profile
+# except ImportError:
+#     import profile
+
+# profile.run("word_count1(sc, docs)", "G24HM2_word_count1_stats")
+# profile.run("word_count2_random(sc, docs)", "G24HM2_word_count2_random_stats")
+# profile.run("word_count2_partitioned(sc, docs)", "G24HM2_word_count2_partitioned_stats")
 
 # Keep open the web interface provided
 input("Press [RETURN] to end the program.")
